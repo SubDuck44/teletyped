@@ -1,0 +1,60 @@
+{
+  outputs = { flake-utils, nixpkgs, ... }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+        inherit (pkgs.lib.fileset) toSource unions;
+        stdenv = pkgs.gccStdenv; # pkgs.clangStdenv;
+      in
+      rec {
+        packages.default = stdenv.mkDerivation {
+          pname = "teletyped";
+          version = "0.0.1";
+
+          src = toSource {
+            root = ./.;
+            fileset = unions [
+              ./meson.build
+              ./src
+            ];
+          };
+
+          nativeBuildInputs = with pkgs; [
+            meson
+            ninja
+            pkg-config
+          ];
+
+          buildInputs = with pkgs; [
+            sdl3
+
+            (writeTextDir "lib/pkgconfig/libev.pc" ''
+              Name: libev
+              Version:
+              Description:
+              Cflags: -I${libev}/include
+              Libs: -L${libev}/lib -lev
+            '')
+          ];
+
+          preConfigure = ''
+            meson rewrite kwargs set project / version "$version"
+          '';
+
+          mesonBuildType = "release";
+          mesonFlags = [ "--werror" ];
+        };
+
+        devShells.default = (pkgs.mkShell.override {
+          inherit stdenv;
+        }) {
+          inputsFrom = [ packages.default ];
+          packages = with pkgs; [
+            clang-tools
+            gdb
+            just
+            valgrind
+          ];
+        };
+      });
+}
