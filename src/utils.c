@@ -1,4 +1,7 @@
+#define _DEFAULT_SOURCE
+
 #include <SDL3/SDL.h>
+#include <assert.h>
 #include <err.h>
 #include <ev.h>
 #include <stdio.h>
