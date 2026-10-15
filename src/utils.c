@@ -15,3 +15,8 @@
 	die(fmt ": %s", __VA_ARGS__ __VA_OPT__(, ) SDL_GetError())
 
 #define arrlen(arr) (sizeof(arr) / sizeof(*(arr)))
+
+#define min(x, y) ((x) < (y) ? (x) : (y))
+#define max(x, y) ((x) > (y) ? (x) : (y))
+#define min3(x, y, z) min(min(x, y), z)
+#define max3(x, y, z) max(max(x, y), z)
