@@ -62,6 +62,8 @@ void onStdinReady(EV_P_ ev_io* w, int revents) {
 		printf("Got: ");
 		if(iscntrl(c)) {
 			printf("%s\r\n", makePrintable(c));
+		} else if(c & (1 << 7)) {
+			printf("%hhb\r\n", c);
 		} else {
 			printf("%c\r\n", c);
 		}
