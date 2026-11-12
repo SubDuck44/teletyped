@@ -14,10 +14,12 @@
 #define die(fmt, ...)                                                          \
 	err(1, "%s:%d: " fmt, __FILE__, __LINE__ __VA_OPT__(, ) __VA_ARGS__)
 
-#define SDL_Die(fmt, ...)                                                      \
+#define dieSDL(fmt, ...)                                                       \
 	die(fmt ": %s", __VA_ARGS__ __VA_OPT__(, ) SDL_GetError())
 
 #define arrlen(arr) (sizeof(arr) / sizeof(*(arr)))
+
+#define println(fmt, ...) printf(fmt "\r\n" __VA_OPT__(, ) __VA_ARGS__);
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))

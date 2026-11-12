@@ -68,11 +68,11 @@ void onStdinReady(EV_P_ ev_io* w, int revents) {
 
 	printf("Got: ");
 	if(iscntrl(c)) {
-		printf("%s\r\n", makePrintable(c));
+		println("%s", makePrintable(c));
 	} else if(c & (1 << 7)) {
-		printf("%hhb\r\n", c);
+		println("%hhb", c);
 	} else {
-		printf("%c\r\n", c);
+		println("%c", c);
 
 		// TODO make macro/function
 		float wait = playSound(typing_snds[SDL_rand(arrlen(typing_snds))]);
@@ -89,7 +89,7 @@ void onWriteheadReady(EV_P_ ev_timer* w, int revents) {
 	(void) revents;
 	(void) w;
 
-	puts("Ready to write!");
+	println("Ready to write!");
 	ev_io_start(loop, &stdin_watcher);
 }
 
