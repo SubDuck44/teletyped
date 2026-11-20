@@ -1,15 +1,18 @@
-#define _DEFAULT_SOURCE
-
-#include <SDL3/SDL.h>
 #include <assert.h>
 #include <err.h>
-#include <ev.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
-//====================
-#include "dynarr.c"
+
+#include <SDL3/SDL.h>
+
+////////////////////
+
+// TODO get args on runtime
+#define MAX_WIDTH 80
+#define RIGHT_MARGIN 10
+#define TYPING_SPEED 1.0
+#define VOLUME 1.0
+
+////////////////////
 
 #define die(fmt, ...)                                                          \
 	err(1, "%s:%d: " fmt, __FILE__, __LINE__ __VA_OPT__(, ) __VA_ARGS__)

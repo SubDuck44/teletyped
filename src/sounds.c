@@ -1,14 +1,14 @@
-#include "dynarr.c"
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "utils.c"
 
 typedef struct {
 	uint8_t* data;
 	uint32_t data_len; // Must be in num floats
-	float    delay;
+	float    delay; // in seconds
 	size_t   seek;
 } Sound;
-
-ArrayN(Sound, SoundQueue);
 
 #define SOUNDS                                                                 \
 	X(SOUND_BL, "bell.wav", 0.1)                                               \
@@ -40,8 +40,12 @@ SOUNDS
 
 #undef X
 
-float playSound(Sound* snd);
-int   initSound(void);
+float testSound(Sound snd);
+
+// 0 in seek makes playSound not overwrite seek
+float playSound(Sound snd);
+
+int initSound(void);
 
 #if __INCLUDE_LEVEL__ == 0 ////////////////////
 
@@ -115,7 +119,7 @@ static uint8_t SOUND_TY_5_DAT[] = {
 #define X(snd, path, dlay)                                                     \
 	Sound snd = {                                                              \
 		.data     = snd##_DAT,                                                 \
-		.data_len = sizeof(snd##_DAT) / sizeof(float),                         \
+		.data_len = sizeof(snd##_DAT),                                         \
 		.delay    = dlay,                                                      \
 	};
 
@@ -123,62 +127,49 @@ SOUNDS
 
 #undef X
 
-#define AUDIO_BUF_SIZE 192000 // NOTE about 1 second of 48kHz float32 audio
-
 static SDL_AudioStream* stream = NULL;
-static uint8_t          audio_buf[AUDIO_BUF_SIZE];
-static SoundQueue       snd_queue;
+static uint8_t          audio_buf[4096];
+static Sound            snd_queue[100];
+static size_t           snd_queue_len = 0;
 static SDL_AudioSpec    spec;
 
-void feedSounds(void*, const void*, int) {
-	println("feeding sound data...");
+float testSound(Sound snd) {
+	SDL_PutAudioStreamData(stream, snd.data, snd.data_len);
 
-	memset(audio_buf, 0, AUDIO_BUF_SIZE);
+	return snd.delay;
+}
 
-	for(size_t i = 0; i < snd_queue.len; i++) {
-		Sound        snd         = snd_queue.ptr[i];
-		const size_t can_consume = min(snd.data_len - snd.seek, AUDIO_BUF_SIZE);
+void feedSounds(void*, SDL_AudioStream* stream, int required, int) {
+	for(size_t i = 0; i < snd_queue_len;) {
+		Sound* it = &snd_queue[i];
+		size_t can_consume = min((size_t) required, it->data_len - it->seek);
 
-		println("can consume: %d", (int) can_consume);
+		SDL_MixAudio(
+			audio_buf, it->data + it->seek, spec.format, can_consume, VOLUME
+		);
 
-		if(!SDL_MixAudio(
-			   audio_buf,           //
-			   snd.data + snd.seek, //
-			   spec.format,         //
-			   can_consume,         //
-			   1.0                  // TODO variable volume through argv
-		   ))
-			dieSDL("failed to mix audio");
-
-		snd.seek += can_consume;
-
-		if(snd.seek >= snd.data_len) {
-			snd_queue.ptr[i] = snd_queue.ptr[--snd_queue.len];
+		it->seek += can_consume;
+		if(it->seek >= it->data_len) {
+			snd_queue[i] = snd_queue[--snd_queue_len];
+		} else {
+			i++;
 		}
 	}
 
-	SDL_PutAudioStreamDataNoCopy(
-		stream,                                //
-		audio_buf,                             //
-		AUDIO_BUF_SIZE,                        //
-		snd_queue.len > 0 ? feedSounds : NULL, //
-		NULL                                   //
-	);
+	SDL_PutAudioStreamData(stream, audio_buf, required);
 
-	SDL_FlushAudioStream(stream);
+	memset(audio_buf, 0, arrlen(audio_buf));
 }
 
-float playSound(Sound* snd) {
-	// TODO inject sounds directly into the buffer, no compromises
-	snd->seek = 0;
-	ArrayAdd(snd_queue, *snd);
-	println("playing sound, %d sounds rem", (int) snd_queue.len);
+float playSound(Sound snd) {
+	if(snd_queue_len >= arrlen(snd_queue)) {
+		fprintf(stderr, "sound queue overflow!!!\n");
+		exit(1);
+	}
 
-	// TODO What to do to kickstart feedSounds callback loop?
-	if(snd_queue.len == 0) println("starting feed callback chain...");
-	feedSounds(NULL, NULL, 0); // NOTE feedSounds doesnt use these args
+	snd_queue[snd_queue_len++] = snd;
 
-	return snd->delay;
+	return snd.delay;
 }
 
 int initSound(void) {
@@ -193,7 +184,6 @@ int initSound(void) {
 #define X(snd, path, dlay)                                                     \
 	load_stream = SDL_IOFromConstMem((snd##_DAT), (sizeof(snd##_DAT)));        \
 	if(!load_stream) dieSDL("Failed to load sound" #snd);                      \
-	/* TODO: Segfault somewhere here */                                        \
 	if(!SDL_LoadWAV_IO(load_stream, true, &spec, &snd.data, &snd.data_len)) {  \
 		dieSDL("Failed to load sound" #snd);                                   \
 	}
@@ -203,11 +193,13 @@ int initSound(void) {
 #undef X
 
 	stream = SDL_OpenAudioDeviceStream(
-		SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, NULL
+		SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, feedSounds, NULL
 	);
 	if(!stream) dieSDL("Failed to open audio device stream");
 
 	SDL_ResumeAudioStreamDevice(stream);
+
+	println("init audio success!"); // DEBUG tmp
 
 	return 0;
 }

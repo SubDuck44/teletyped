@@ -27,14 +27,6 @@
 
           buildInputs = with pkgs; [
             sdl3
-
-            (writeTextDir "lib/pkgconfig/libev.pc" ''
-              Name: libev
-              Version:
-              Description:
-              Cflags: -I${libev}/include
-              Libs: -L${libev}/lib -lev
-            '')
           ];
 
           preConfigure = ''

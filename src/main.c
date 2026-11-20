@@ -1,13 +1,42 @@
-#include "sounds.c"
-#include "utils.c"
-
 #include <ctype.h>
+#include <stdio.h>
 #include <termios.h>
+#include <unistd.h>
+
+#include "sounds.c"
 
 struct termios restore_attrs;
 
-ev_io    stdin_watcher;
-ev_timer stroke_watcher;
+#define PICK(arr) *(arr)[SDL_rand(arrlen(arr))]
+
+static Sound* typing_snds[] = {
+	&SOUND_TY_1, //
+	&SOUND_TY_2, //
+	&SOUND_TY_3, //
+	&SOUND_TY_4, //
+	&SOUND_TY_5, //
+};
+
+static Sound* carriage_snds[] = {
+	&SOUND_CR_1, //
+	&SOUND_CR_2, //
+	&SOUND_CR_3, //
+	&SOUND_CR_4, //
+};
+
+static Sound* whitespace_snds[] = {
+	&SOUND_WS_1, //
+	&SOUND_WS_2, //
+	&SOUND_WS_3, //
+	&SOUND_WS_4, //
+};
+
+static Sound* hitstop_snds[] = {
+	&SOUND_HS_1, //
+	&SOUND_HS_2, //
+	&SOUND_HS_3, //
+	&SOUND_HS_4, //
+};
 
 /* Gets an ASCII char and, if it is a control character, returns a string which
    which makes the character readable, i.e. 'LF' for 'line feed'.
@@ -54,55 +83,22 @@ const char* makePrintable(const char c) {
 	return NULL;
 }
 
-void onStdinReady(EV_P_ ev_io* w, int revents) {
-	(void) w;
-	(void) revents;
-
-	char c = getchar();
-
-	assert(c != EOF && "Got stdin ready on EOF");
-
-	static Sound* typing_snds[] = {
-		&SOUND_TY_1, &SOUND_TY_2, &SOUND_TY_3, &SOUND_TY_4, &SOUND_TY_5,
-	};
-
-	printf("Got: ");
-	if(iscntrl(c)) {
-		println("%s", makePrintable(c));
-	} else if(c & (1 << 7)) {
-		println("%hhb", c);
-	} else {
-		println("%c", c);
-
-		// TODO make macro/function
-		float wait = playSound(typing_snds[SDL_rand(arrlen(typing_snds))]);
-		ev_timer_set(&stroke_watcher, wait, 0.0);
-		ev_timer_start(loop, &stroke_watcher);
-
-		ev_io_stop(loop, &stdin_watcher);
-	}
-	if(c == 'q') exit(0);
-}
-
-void onWriteheadReady(EV_P_ ev_timer* w, int revents) {
-	(void) loop;
-	(void) revents;
-	(void) w;
-
-	println("Ready to write!");
-	ev_io_start(loop, &stdin_watcher);
-}
-
 void onExit(void) {
 	// Exit raw mode
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &restore_attrs);
 	////////////////////
 }
 
+void playAndDelay(Sound sound) {
+	usleep(playSound(sound) * 1e6);
+}
+
 int main(void) {
+	int fd = isatty(STDIN_FILENO) ? STDIN_FILENO : STDOUT_FILENO;
+
 	// Enter raw mode
 	struct termios attrs;
-	tcgetattr(STDIN_FILENO, &attrs);
+	tcgetattr(fd, &attrs);
 	restore_attrs = attrs;
 
 	attrs.c_iflag &= ~(
@@ -122,23 +118,45 @@ int main(void) {
 		| IEXTEN // Disable C-v on some terminals
 	);
 
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &attrs);
+	tcsetattr(fd, TCSAFLUSH, &attrs);
+
+	setbuf(stdout, NULL);
 
 	atexit(onExit);
 
 	////////////////////
 
-	struct ev_loop* event_loop = EV_DEFAULT;
-
-	ev_io_init(&stdin_watcher, onStdinReady, STDIN_FILENO, EV_READ);
-	ev_io_start(event_loop, &stdin_watcher);
-
-	ev_timer_init(&stroke_watcher, onWriteheadReady, 0, 0);
-
 	// Init sounds
 	initSound();
 
-	ev_run(event_loop, 0);
+	int col = 0;
+
+	for(;;) {
+		char c = getchar();
+		if(c == EOF || c == '\x11' /* C-q */) {
+			exit(0);
+		} else if(c == '\n' || c == '\r') {
+			playSound(PICK(carriage_snds));
+			printf("\n");
+			while(col-- > 0) {
+				printf("[D");
+				usleep(10 * 1000);
+			}
+			printf("[G");
+		} else if(c == ' ') {
+			playAndDelay(PICK(whitespace_snds));
+			printf(" ");
+			col++;
+		} else if(iscntrl(c)) {
+			const char* s = makePrintable(c);
+			printf("%s", s);
+			col += strlen(s);
+		} else {
+			playAndDelay(PICK(typing_snds));
+			printf("%c", c);
+			col++;
+		}
+	}
 
 	return 0;
 }
