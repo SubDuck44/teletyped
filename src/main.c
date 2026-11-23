@@ -162,6 +162,8 @@ int main(void) {
 			printf("%c", c);
 			col++;
 		}
+
+		if(col == MAX_WIDTH - RIGHT_MARGIN) playSound(SOUND_BL);
 	}
 
 	return 0;
