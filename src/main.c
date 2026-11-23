@@ -139,7 +139,8 @@ int main(void) {
 			Sound  snd      = PICK(carriage_snds);
 			double fraction = min((double) col / MAX_WIDTH, 1.0);
 			size_t span     = snd.delay * SECOND_TO_BYTES;
-			snd.seek        = span * (1 - fraction) - (span % sizeof(float));
+			snd.seek        = span * (1 - fraction);
+			snd.seek -= snd.seek % sizeof(float);
 			playSound(snd);
 
 			printf("\n");
