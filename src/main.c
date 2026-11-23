@@ -90,6 +90,7 @@ static int stdfd;
 void onExit(void) {
 	// Exit raw mode
 	tcsetattr(stdfd, TCSAFLUSH, &restore_attrs);
+	printf("[m\n\n");
 }
 
 void playAndDelay(Sound sound) {
@@ -106,16 +107,25 @@ void* ttyHandler(void*) {
 		ssize_t len = read(tty, buf, sizeof(buf));
 		for(ssize_t i = 0; i < len; i++) {
 			switch(buf[i]) {
-				case '\x03': // C-c
-				case '\x11': // C-q
-					exit(0);
+			case '\x03': // C-c
+			case '\x11': // C-q
+				exit(0);
 			}
 		}
 	}
 }
 
+static void printPaper(int* row) {
+	printf("[49m\n[G[30;%dm ● ", (*row % 2 == 0) ? 107 : 102);
+	for(size_t i = 0; i < MAX_WIDTH + 5; i++)
+		printf(" ");
+	printf(" ● [G[3C%4d ", *row + 1);
+}
+
 int main(void) {
-	if(isatty(STDIN_FILENO)) {
+	bool is_tty = isatty(STDIN_FILENO);
+
+	if(is_tty) {
 		stdfd = STDIN_FILENO;
 	} else {
 		stdfd = STDOUT_FILENO;
@@ -140,8 +150,8 @@ int main(void) {
 		| OPOST // Don't map LF to CRLF on stdout
 	);
 	attrs.c_lflag &= ~(
-		0      //
-		| ECHO // Disable echoing on stdout
+		0        //
+		| ECHO   // Disable echoing on stdout
 		| ICANON // Disable canonical mode
 		| ISIG   // Disable C-c and C-z termination handlers
 		| IEXTEN // Disable C-v on some terminals
@@ -158,7 +168,11 @@ int main(void) {
 	// Init sounds
 	initSound();
 
+	int row = 0;
 	int col = 0;
+
+	printf("[2J[999B");
+	printPaper(&row);
 
 	for(;;) {
 		char c = getchar();
@@ -172,12 +186,13 @@ int main(void) {
 			snd.seek -= snd.seek % sizeof(float);
 			playSound(snd);
 
-			printf("\n");
 			while(col-- > 0) {
 				printf("[D");
 				usleep(1e6 / MAX_WIDTH);
 			}
-			printf("[G");
+
+			row++;
+			printPaper(&row);
 		} else if(c == ' ') {
 			playAndDelay(PICK(whitespace_snds));
 			printf(" ");
