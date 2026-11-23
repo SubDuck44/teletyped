@@ -94,9 +94,8 @@ void onExit(void) {
 }
 
 void playAndDelay(Sound sound) {
-	usleep(playSound(sound) * 1e6);
+	usleep(playSound(sound) * 1e6 / TYPING_SPEED);
 }
-
 
 void* ttyHandler(void*) {
 	int tty = open("/dev/tty", O_RDONLY);
@@ -177,6 +176,8 @@ int main(void) {
 	for(;;) {
 		char c = getchar();
 		if(c == EOF || c == '\x11' /* C-q */) {
+			playSound(SOUND_BL);
+			sleep(1);
 			exit(0);
 		} else if(c == '\n' || c == '\r') {
 			Sound  snd      = PICK(carriage_snds);

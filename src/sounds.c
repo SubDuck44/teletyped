@@ -12,7 +12,7 @@ typedef struct {
 } Sound;
 
 #define SOUNDS                                                                 \
-	X(SOUND_BL, "bell.wav", 0.1)                                               \
+	X(SOUND_BL, "bell.wav", 1.0)                                               \
 	X(SOUND_CR_1, "carriage_return1.wav", 0.78)                                \
 	X(SOUND_CR_2, "carriage_return2.wav", 0.86)                                \
 	X(SOUND_CR_3, "carriage_return3.wav", 0.64)                                \
