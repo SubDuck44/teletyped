@@ -7,10 +7,23 @@
 ////////////////////
 
 // TODO get args on runtime
+
+// Maximum column width of the medium
 #define MAX_WIDTH 80
+
+// Threshold before the maximum column width at which to sound the bell
 #define RIGHT_MARGIN 10
+
+// Multiplier of printer speed (0.0 is halt, 1.0 is intended speed, 2.0 is twice
+// the intended speed)
 #define TYPING_SPEED 1.0
+
+// Global volume for sounds (0.0 - 1.0)
 #define VOLUME 1.0
+
+// NOTE the factor with which to convert 1 second of 48khz float32 audio
+// to bytes of raw PCM samples
+#define SECOND_TO_BYTES 192000
 
 ////////////////////
 

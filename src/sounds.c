@@ -5,8 +5,8 @@
 
 typedef struct {
 	uint8_t* data;
-	uint32_t data_len;
-	float    delay; // in seconds
+	uint32_t data_len; // number of bytes in loaded file
+	float    delay;    // in seconds
 
 	size_t seek; // NOTE only used in copies
 } Sound;

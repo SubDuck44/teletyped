@@ -136,11 +136,16 @@ int main(void) {
 		if(c == EOF || c == '\x11' /* C-q */) {
 			exit(0);
 		} else if(c == '\n' || c == '\r') {
-			playSound(PICK(carriage_snds));
+			Sound  snd      = PICK(carriage_snds);
+			double fraction = min((double) col / MAX_WIDTH, 1.0);
+			size_t span     = snd.delay * SECOND_TO_BYTES;
+			snd.seek        = span * (1 - fraction) - (span % sizeof(float));
+			playSound(snd);
+
 			printf("\n");
 			while(col-- > 0) {
 				printf("[D");
-				usleep(10 * 1000);
+				usleep(1e6 / MAX_WIDTH);
 			}
 			printf("[G");
 		} else if(c == ' ') {
