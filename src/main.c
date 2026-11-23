@@ -1,4 +1,6 @@
 #include <ctype.h>
+#include <fcntl.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
@@ -83,22 +85,49 @@ const char* makePrintable(const char c) {
 	return NULL;
 }
 
+static int stdfd;
+
 void onExit(void) {
 	// Exit raw mode
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &restore_attrs);
-	////////////////////
+	tcsetattr(stdfd, TCSAFLUSH, &restore_attrs);
 }
 
 void playAndDelay(Sound sound) {
 	usleep(playSound(sound) * 1e6);
 }
 
+
+void* ttyHandler(void*) {
+	int tty = open("/dev/tty", O_RDONLY);
+	if(tty < 0) die("tty");
+
+	char buf[256];
+	for(;;) {
+		ssize_t len = read(tty, buf, sizeof(buf));
+		for(ssize_t i = 0; i < len; i++) {
+			switch(buf[i]) {
+				case '\x03': // C-c
+				case '\x11': // C-q
+					exit(0);
+			}
+		}
+	}
+}
+
 int main(void) {
-	int fd = isatty(STDIN_FILENO) ? STDIN_FILENO : STDOUT_FILENO;
+	if(isatty(STDIN_FILENO)) {
+		stdfd = STDIN_FILENO;
+	} else {
+		stdfd = STDOUT_FILENO;
+
+		pthread_t thread = {0};
+		if(pthread_create(&thread, NULL, ttyHandler, NULL) != 0)
+			die("failed to create tty handler thread");
+	}
 
 	// Enter raw mode
 	struct termios attrs;
-	tcgetattr(fd, &attrs);
+	tcgetattr(stdfd, &attrs);
 	restore_attrs = attrs;
 
 	attrs.c_iflag &= ~(
@@ -111,14 +140,14 @@ int main(void) {
 		| OPOST // Don't map LF to CRLF on stdout
 	);
 	attrs.c_lflag &= ~(
-		0        //
-		| ECHO   // Disable echoing on stdout
+		0      //
+		| ECHO // Disable echoing on stdout
 		| ICANON // Disable canonical mode
 		| ISIG   // Disable C-c and C-z termination handlers
 		| IEXTEN // Disable C-v on some terminals
 	);
 
-	tcsetattr(fd, TCSAFLUSH, &attrs);
+	tcsetattr(stdfd, TCSAFLUSH, &attrs);
 
 	setbuf(stdout, NULL);
 
