@@ -43,38 +43,38 @@ static Sound* hitstop_snds[] = {
    If c is not a control character, this function will return NULL.*/
 const char* makePrintable(const char c) {
 	static const char* const SYMS[] = {
-		"NUL", // Null character
-		"SOH", // Start of heading
-		"STX", // Start of text
-		"ETX", // End of text
-		"EOT", // End of transmission
-		"ENQ", // Enquiry
-		"ACK", // Acknowledge
-		"BEL", // Bell
-		"BS",  // Backspace
-		"HT",  // Horizontal tab
-		"LF",  // Newline
-		"VT",  // Vertical tab
-		"FF",  // Form feed
-		"CR",  // Carriage return
-		"SO",  // Shift in
-		"SI",  // Shift out
-		"DLE", // Data link escape
-		"DC1", // Device control 1
-		"DC2", // Device control 2
-		"DC3", // Device control 3
-		"DC4", // Device control 4
-		"NAK", // Negative acknowledge
-		"SYN", // Synchronous idle
-		"ETB", // End of transmission block
-		"CAN", // Cancel
-		"EM",  // End of medium
-		"SUB", // Substitute
-		"ESC", // Escape
-		"FS",  // File separator
-		"GS",  // Group separator
-		"RS",  // Record separator
-		"US",  // Unit separator
+		"NUL",  // Null character
+		"SOH",  // Start of heading
+		"STX",  // Start of text
+		"ETX",  // End of text
+		"EOT",  // End of transmission
+		"ENQ",  // Enquiry
+		"ACK",  // Acknowledge
+		"BEL",  // Bell
+		"BS",   // Backspace
+		"    ", // Horizontal tab
+		"LF",   // Newline
+		"VT",   // Vertical tab
+		"FF",   // Form feed
+		"CR",   // Carriage return
+		"SO",   // Shift in
+		"SI",   // Shift out
+		"DLE",  // Data link escape
+		"DC1",  // Device control 1
+		"DC2",  // Device control 2
+		"DC3",  // Device control 3
+		"DC4",  // Device control 4
+		"NAK",  // Negative acknowledge
+		"SYN",  // Synchronous idle
+		"ETB",  // End of transmission block
+		"CAN",  // Cancel
+		"EM",   // End of medium
+		"SUB",  // Substitute
+		"ESC",  // Escape
+		"FS",   // File separator
+		"GS",   // Group separator
+		"RS",   // Record separator
+		"US",   // Unit separator
 	};
 
 	if(c == 127) return "DEL"; // Delete
