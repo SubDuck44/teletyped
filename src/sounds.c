@@ -5,9 +5,10 @@
 
 typedef struct {
 	uint8_t* data;
-	uint32_t data_len; // Must be in num floats
+	uint32_t data_len;
 	float    delay; // in seconds
-	size_t   seek;
+
+	size_t seek; // NOTE only used in copies
 } Sound;
 
 #define SOUNDS                                                                 \
@@ -40,9 +41,6 @@ SOUNDS
 
 #undef X
 
-float testSound(Sound snd);
-
-// 0 in seek makes playSound not overwrite seek
 float playSound(Sound snd);
 
 int initSound(void);
@@ -128,20 +126,15 @@ SOUNDS
 #undef X
 
 static SDL_AudioStream* stream = NULL;
-static uint8_t          audio_buf[4096];
-static Sound            snd_queue[100];
-static size_t           snd_queue_len = 0;
 static SDL_AudioSpec    spec;
 
-float testSound(Sound snd) {
-	SDL_PutAudioStreamData(stream, snd.data, snd.data_len);
-
-	return snd.delay;
-}
+static uint8_t audio_buf[4096];
+static Sound   snd_queue[100]; // good enough
+static size_t  snd_queue_len = 0;
 
 void feedSounds(void*, SDL_AudioStream* stream, int required, int) {
 	for(size_t i = 0; i < snd_queue_len;) {
-		Sound* it = &snd_queue[i];
+		Sound* it          = &snd_queue[i];
 		size_t can_consume = min((size_t) required, it->data_len - it->seek);
 
 		SDL_MixAudio(
@@ -198,8 +191,6 @@ int initSound(void) {
 	if(!stream) dieSDL("Failed to open audio device stream");
 
 	SDL_ResumeAudioStreamDevice(stream);
-
-	println("init audio success!"); // DEBUG tmp
 
 	return 0;
 }
