@@ -43,7 +43,7 @@ static Sound* hitstop_snds[] = {
 /* Gets an ASCII char and, if it is a control character, returns a string which
    which makes the character readable, i.e. 'LF' for 'line feed'.
    If c is not a control character, this function will return NULL.*/
-const char* makePrintable(const char c) {
+static const char* makePrintable(const char c) {
 	static const char* const SYMS[] = {
 		"NUL",  // Null character
 		"SOH",  // Start of heading
@@ -87,17 +87,17 @@ const char* makePrintable(const char c) {
 
 static int stdfd;
 
-void onExit(void) {
+static void onExit(void) {
 	// Exit raw mode
 	tcsetattr(stdfd, TCSAFLUSH, &restore_attrs);
 	printf("[m\n\n");
 }
 
-void playAndDelay(Sound sound) {
+static void playAndDelay(Sound sound) {
 	usleep(playSound(sound) * 1e6 / TYPING_SPEED);
 }
 
-void* ttyHandler(void*) {
+static void* ttyHandler(void*) {
 	int tty = open("/dev/tty", O_RDONLY);
 	if(tty < 0) die("tty");
 
@@ -119,6 +119,23 @@ static void printPaper(int* row) {
 	for(size_t i = 0; i < MAX_WIDTH + 5; i++)
 		printf(" ");
 	printf(" ● [G[3C%4d ", *row + 1);
+}
+
+static void carriageReturn(int* col, int* row) {
+	Sound  snd      = PICK(carriage_snds);
+	double fraction = min((double) *col / MAX_WIDTH, 1.0);
+	size_t span     = snd.delay * SECOND_TO_BYTES;
+	snd.seek        = span * (1 - fraction);
+	snd.seek -= snd.seek % sizeof(float);
+	playSound(snd);
+
+	while((*col)-- > 0) {
+		printf("[D");
+		usleep(1e6 / MAX_WIDTH);
+	}
+
+	(*row)++;
+	printPaper(row);
 }
 
 int main(void) {
@@ -180,28 +197,22 @@ int main(void) {
 			sleep(1);
 			exit(0);
 		} else if(c == '\n' || c == '\r') {
-			Sound  snd      = PICK(carriage_snds);
-			double fraction = min((double) col / MAX_WIDTH, 1.0);
-			size_t span     = snd.delay * SECOND_TO_BYTES;
-			snd.seek        = span * (1 - fraction);
-			snd.seek -= snd.seek % sizeof(float);
-			playSound(snd);
-
-			while(col-- > 0) {
-				printf("[D");
-				usleep(1e6 / MAX_WIDTH);
-			}
-
-			row++;
-			printPaper(&row);
-		} else if(c == ' ') {
-			playAndDelay(PICK(whitespace_snds));
-			printf(" ");
-			col++;
+			carriageReturn(&col, &row);
 		} else if(iscntrl(c)) {
 			const char* s = makePrintable(c);
 			printf("%s", s);
 			col += strlen(s);
+		} else if(col >= MAX_WIDTH) {
+			if(is_tty) {
+				playAndDelay(PICK(hitstop_snds));
+			} else {
+				carriageReturn(&col, &row);
+				printf("%c", c);
+			}
+		} else if(c == ' ') {
+			playAndDelay(PICK(whitespace_snds));
+			printf(" ");
+			col++;
 		} else {
 			playAndDelay(PICK(typing_snds));
 			printf("%c", c);
